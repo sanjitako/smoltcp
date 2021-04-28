@@ -1663,9 +1663,9 @@ impl<'a> TcpSocket<'a> {
         }
     }
 
-    pub(crate) fn dispatch<F>(&mut self, timestamp: Instant, ip_mtu: usize,
-                              emit: F) -> Result<()>
-            where F: FnOnce((IpRepr, TcpRepr)) -> Result<()> {
+    pub fn dispatch<F>(&mut self, timestamp: Instant, ip_mtu: usize,
+                       emit: F) -> Result<()>
+        where F: FnOnce((IpRepr, TcpRepr)) -> Result<()> {
         if !self.remote_endpoint.is_specified() { return Err(Error::Exhausted) }
 
         if self.remote_last_ts.is_none() {
