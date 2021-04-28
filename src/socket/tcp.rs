@@ -1664,7 +1664,7 @@ impl<'a> TcpSocket<'a> {
         }
     }
 
-    pub fn dispatch<F>(&mut self, timestamp: Instant, caps: &DeviceCapabilities,
+    pub fn dispatch<F>(&mut self, timestamp: Instant, caps: usize,
                        emit: F) -> Result<()>
         where F: FnOnce((IpRepr, TcpRepr)) -> Result<()> {
         if !self.remote_endpoint.is_specified() { return Err(Error::Exhausted) }
@@ -1791,7 +1791,7 @@ impl<'a> TcpSocket<'a> {
                 let offset = self.remote_last_seq - self.local_seq_no;
                 let win_limit = self.local_seq_no + self.remote_win_len - self.remote_last_seq;
                 let size = cmp::min(cmp::min(win_limit, self.remote_mss),
-                                    caps.max_transmission_unit - ip_repr.buffer_len() - repr.mss_header_len());
+                                    caps - ip_repr.buffer_len() - repr.mss_header_len());
                 repr.payload = self.tx_buffer.get_allocated(offset, size);
                 // If we've sent everything we had in the buffer, follow it with the PSH or FIN
                 // flags, depending on whether the transmit half of the connection is open.
@@ -1850,7 +1850,7 @@ impl<'a> TcpSocket<'a> {
 
         if repr.control == TcpControl::Syn {
             // Fill the MSS option. See RFC 6691 for an explanation of this calculation.
-            let mut max_segment_size = caps.max_transmission_unit;
+            let mut max_segment_size = caps;
             max_segment_size -= ip_repr.buffer_len();
             max_segment_size -= repr.mss_header_len();
             repr.max_seg_size = Some(max_segment_size as u16);

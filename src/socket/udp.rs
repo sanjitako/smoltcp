@@ -295,10 +295,10 @@ impl<'a> UdpSocket<'a> {
         Ok(())
     }
 
-    pub(crate) fn dispatch<F>(&mut self, emit: F) -> Result<()>
-            where F: FnOnce((IpRepr, UdpRepr)) -> Result<()> {
-        let handle    = self.handle();
-        let endpoint  = self.endpoint;
+    pub fn dispatch<F>(&mut self, emit: F) -> Result<()>
+        where F: FnOnce((IpRepr, UdpRepr)) -> Result<()> {
+        let handle = self.handle();
+        let endpoint = self.endpoint;
         let hop_limit = self.hop_limit.unwrap_or(64);
 
         self.tx_buffer.dequeue_with(|remote_endpoint, payload_buf| {
