@@ -245,7 +245,7 @@ let iface = InterfaceBuilder::new(device)
 #[derive(Debug, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[cfg(feature = "medium-ethernet")]
-enum EthernetPacket<'a> {
+pub enum EthernetPacket<'a> {
     #[cfg(feature = "proto-ipv4")]
     Arp(ArpRepr),
     Ip(IpPacket<'a>),
@@ -253,7 +253,7 @@ enum EthernetPacket<'a> {
 
 #[derive(Debug, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub(crate) enum IpPacket<'a> {
+pub enum IpPacket<'a> {
     #[cfg(feature = "proto-ipv4")]
     Icmpv4((Ipv4Repr, Icmpv4Repr<'a>)),
     #[cfg(feature = "proto-igmp")]

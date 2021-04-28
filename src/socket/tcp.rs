@@ -1127,8 +1127,8 @@ impl<'a> TcpSocket<'a> {
         true
     }
 
-    pub(crate) fn process(&mut self, timestamp: Instant, ip_repr: &IpRepr, repr: &TcpRepr) ->
-                         Result<Option<(IpRepr, TcpRepr<'static>)>> {
+    pub fn process(&mut self, timestamp: Instant, ip_repr: &IpRepr, repr: &TcpRepr) ->
+    Result<Option<(IpRepr, TcpRepr<'static>)>> {
         debug_assert!(self.accepts(ip_repr, repr));
 
         // Consider how much the sequence number space differs from the transmit buffer space.
@@ -1907,7 +1907,7 @@ impl<'a> TcpSocket<'a> {
     }
 
     #[allow(clippy::if_same_then_else)]
-    pub(crate) fn poll_at(&self) -> PollAt {
+    pub fn poll_at(&self) -> PollAt {
         // The logic here mirrors the beginning of dispatch() closely.
         if !self.remote_endpoint.is_specified() {
             // No one to talk to, nothing to transmit.

@@ -277,7 +277,7 @@ impl<'a> UdpSocket<'a> {
         true
     }
 
-    pub(crate) fn process(&mut self, ip_repr: &IpRepr, repr: &UdpRepr) -> Result<()> {
+    pub fn process(&mut self, ip_repr: &IpRepr, repr: &UdpRepr) -> Result<()> {
         debug_assert!(self.accepts(ip_repr, repr));
 
         let size = repr.payload.len();
@@ -327,7 +327,7 @@ impl<'a> UdpSocket<'a> {
         Ok(())
     }
 
-    pub(crate) fn poll_at(&self) -> PollAt {
+    pub fn poll_at(&self) -> PollAt {
         if self.tx_buffer.is_empty() {
             PollAt::Ingress
         } else {

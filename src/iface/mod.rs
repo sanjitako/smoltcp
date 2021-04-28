@@ -17,6 +17,8 @@ pub(crate) use self::neighbor::Answer as NeighborAnswer;
 #[cfg(feature = "medium-ethernet")]
 pub use self::neighbor::Cache as NeighborCache;
 pub use self::route::{Route, Routes};
+#[cfg(feature = "medium-ethernet")]
+pub use self::interface::IpPacket;
 
 #[cfg(any(feature = "medium-ethernet", feature = "medium-ip"))]
 pub use self::interface::{Interface, InterfaceBuilder};
