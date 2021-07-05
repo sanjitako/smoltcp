@@ -194,7 +194,7 @@ pub struct Context {
 
 #[cfg(test)]
 impl Context {
-    pub(crate) const DUMMY: Context = Context {
+    pub const DUMMY: Context = Context {
         caps: DeviceCapabilities {
             #[cfg(feature = "medium-ethernet")]
             medium: crate::phy::Medium::Ethernet,
