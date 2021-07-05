@@ -11,19 +11,25 @@ The interface implemented by this module uses explicit buffering: you decide on 
 size for a buffer, allocate it, and let the networking stack use it.
 */
 
+use crate::phy::DeviceCapabilities;
 use crate::time::Instant;
 
+#[cfg(feature = "socket-dhcpv4")]
+mod dhcpv4;
+#[cfg(all(
+    feature = "socket-icmp",
+    any(feature = "proto-ipv4", feature = "proto-ipv6")
+))]
+mod icmp;
 mod meta;
 #[cfg(feature = "socket-raw")]
 mod raw;
-#[cfg(all(feature = "socket-icmp", any(feature = "proto-ipv4", feature = "proto-ipv6")))]
-mod icmp;
-#[cfg(feature = "socket-udp")]
-mod udp;
+mod ref_;
+mod set;
 #[cfg(feature = "socket-tcp")]
 mod tcp;
-mod set;
-mod ref_;
+#[cfg(feature = "socket-udp")]
+mod udp;
 
 #[cfg(feature = "async")]
 mod waker;
@@ -33,27 +39,24 @@ pub(crate) use self::meta::Meta as SocketMeta;
 pub(crate) use self::waker::WakerRegistration;
 
 #[cfg(feature = "socket-raw")]
-pub use self::raw::{RawPacketMetadata,
-                    RawSocketBuffer,
-                    RawSocket};
+pub use self::raw::{RawPacketMetadata, RawSocket, RawSocketBuffer};
 
-#[cfg(all(feature = "socket-icmp", any(feature = "proto-ipv4", feature = "proto-ipv6")))]
-pub use self::icmp::{IcmpPacketMetadata,
-                     IcmpSocketBuffer,
-                     Endpoint as IcmpEndpoint,
-                     IcmpSocket};
+#[cfg(all(
+    feature = "socket-icmp",
+    any(feature = "proto-ipv4", feature = "proto-ipv6")
+))]
+pub use self::icmp::{Endpoint as IcmpEndpoint, IcmpPacketMetadata, IcmpSocket, IcmpSocketBuffer};
 
 #[cfg(feature = "socket-udp")]
-pub use self::udp::{UdpPacketMetadata,
-                    UdpSocketBuffer,
-                    UdpSocket};
+pub use self::udp::{UdpPacketMetadata, UdpSocket, UdpSocketBuffer};
 
 #[cfg(feature = "socket-tcp")]
-pub use self::tcp::{SocketBuffer as TcpSocketBuffer,
-                    State as TcpState,
-                    TcpSocket};
+pub use self::tcp::{SocketBuffer as TcpSocketBuffer, State as TcpState, TcpSocket};
 
-pub use self::set::{Set as SocketSet, Item as SocketSetItem, Handle as SocketHandle};
+#[cfg(feature = "socket-dhcpv4")]
+pub use self::dhcpv4::{Config as Dhcpv4Config, Dhcpv4Socket, Event as Dhcpv4Event};
+
+pub use self::set::{Handle as SocketHandle, Item as SocketSetItem, Set as SocketSet};
 pub use self::set::{Iter as SocketSetIter, IterMut as SocketSetIterMut};
 
 pub use self::ref_::Ref as SocketRef;
@@ -85,12 +88,17 @@ pub enum PollAt {
 pub enum Socket<'a> {
     #[cfg(feature = "socket-raw")]
     Raw(RawSocket<'a>),
-    #[cfg(all(feature = "socket-icmp", any(feature = "proto-ipv4", feature = "proto-ipv6")))]
+    #[cfg(all(
+        feature = "socket-icmp",
+        any(feature = "proto-ipv4", feature = "proto-ipv6")
+    ))]
     Icmp(IcmpSocket<'a>),
     #[cfg(feature = "socket-udp")]
     Udp(UdpSocket<'a>),
     #[cfg(feature = "socket-tcp")]
     Tcp(TcpSocket<'a>),
+    #[cfg(feature = "socket-dhcpv4")]
+    Dhcpv4(Dhcpv4Socket),
 }
 
 macro_rules! dispatch_socket {
@@ -110,6 +118,8 @@ macro_rules! dispatch_socket {
             &$( $mut_ )* Socket::Udp(ref $( $mut_ )* $socket) => $code,
             #[cfg(feature = "socket-tcp")]
             &$( $mut_ )* Socket::Tcp(ref $( $mut_ )* $socket) => $code,
+            #[cfg(feature = "socket-dhcpv4")]
+            &$( $mut_ )* Socket::Dhcpv4(ref $( $mut_ )* $socket) => $code,
         }
     };
 }
@@ -129,8 +139,8 @@ impl<'a> Socket<'a> {
         dispatch_socket!(mut self, |socket| &mut socket.meta)
     }
 
-    pub(crate) fn poll_at(&self) -> PollAt {
-        dispatch_socket!(self, |socket| socket.poll_at())
+    pub(crate) fn poll_at(&self, cx: &Context) -> PollAt {
+        dispatch_socket!(self, |socket| socket.poll_at(cx))
     }
 }
 
@@ -142,15 +152,13 @@ impl<'a> SocketSession for Socket<'a> {
 
 /// A conversion trait for network sockets.
 pub trait AnySocket<'a>: SocketSession + Sized {
-    fn downcast<'c>(socket_ref: SocketRef<'c, Socket<'a>>) ->
-                   Option<SocketRef<'c, Self>>;
+    fn downcast<'c>(socket_ref: SocketRef<'c, Socket<'a>>) -> Option<SocketRef<'c, Self>>;
 }
 
 macro_rules! from_socket {
     ($socket:ty, $variant:ident) => {
         impl<'a> AnySocket<'a> for $socket {
-            fn downcast<'c>(ref_: SocketRef<'c, Socket<'a>>) ->
-                           Option<SocketRef<'c, Self>> {
+            fn downcast<'c>(ref_: SocketRef<'c, Socket<'a>>) -> Option<SocketRef<'c, Self>> {
                 if let Socket::$variant(ref mut socket) = SocketRef::into_inner(ref_) {
                     Some(SocketRef::new(socket))
                 } else {
@@ -158,14 +166,56 @@ macro_rules! from_socket {
                 }
             }
         }
-    }
+    };
 }
 
 #[cfg(feature = "socket-raw")]
 from_socket!(RawSocket<'a>, Raw);
-#[cfg(all(feature = "socket-icmp", any(feature = "proto-ipv4", feature = "proto-ipv6")))]
+#[cfg(all(
+    feature = "socket-icmp",
+    any(feature = "proto-ipv4", feature = "proto-ipv6")
+))]
 from_socket!(IcmpSocket<'a>, Icmp);
 #[cfg(feature = "socket-udp")]
 from_socket!(UdpSocket<'a>, Udp);
 #[cfg(feature = "socket-tcp")]
 from_socket!(TcpSocket<'a>, Tcp);
+#[cfg(feature = "socket-dhcpv4")]
+from_socket!(Dhcpv4Socket, Dhcpv4);
+
+/// Data passed to sockets when processing.
+#[derive(Clone, Debug)]
+pub(crate) struct Context {
+    pub now: Instant,
+    #[cfg(feature = "medium-ethernet")]
+    pub ethernet_address: Option<crate::wire::EthernetAddress>,
+    pub caps: DeviceCapabilities,
+}
+
+#[cfg(test)]
+impl Context {
+    pub(crate) const DUMMY: Context = Context {
+        caps: DeviceCapabilities {
+            #[cfg(feature = "medium-ethernet")]
+            medium: crate::phy::Medium::Ethernet,
+            #[cfg(not(feature = "medium-ethernet"))]
+            medium: crate::phy::Medium::Ip,
+            checksum: crate::phy::ChecksumCapabilities {
+                #[cfg(feature = "proto-ipv4")]
+                icmpv4: crate::phy::Checksum::Both,
+                #[cfg(feature = "proto-ipv6")]
+                icmpv6: crate::phy::Checksum::Both,
+                ipv4: crate::phy::Checksum::Both,
+                tcp: crate::phy::Checksum::Both,
+                udp: crate::phy::Checksum::Both,
+            },
+            max_burst_size: None,
+            #[cfg(feature = "medium-ethernet")]
+            max_transmission_unit: 1514,
+            #[cfg(not(feature = "medium-ethernet"))]
+            max_transmission_unit: 1500,
+        },
+        ethernet_address: None,
+        now: Instant { millis: 0 },
+    };
+}

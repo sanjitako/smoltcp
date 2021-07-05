@@ -6,7 +6,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Version bumped to 0.8
 - Update `managed` from 0.7 to 0.8 ([442](https://github.com/smoltcp-rs/smoltcp/pull/442))
+- udp: Add `close()` method to unbind socket.
+
+## [0.7.5] - 2021-06-28
+
+- dhcpv4: emit DNS servers in repr (#505)
+
+## [0.7.4] - 2021-06-11
+
+- tcp: fix "subtract sequence numbers with underflow" on remote window shrink. (#490)
+- tcp: fix substract with overflow when receiving a SYNACK with unincremented ACK number. (#491)
+- tcp: use nonzero initial sequence number to workaround misbehaving servers. (#492)
+
+## [0.7.3] - 2021-05-29
+
+- Fix "unused attribute" error in recent nightlies.
+
+## [0.7.2] - 2021-05-29
+
+- iface: check for ipv4 subnet broadcast addrs everywhere (#462)
+- dhcp: always send parameter_request_list. (#456)
+- dhcp: Clear expiration time on reset. (#456)
+- phy: fix FaultInjector returning a too big buffer when simulating a drop on tx (#463)
+- tcp rtte: fix "attempt to multiply with overflow". (#476)
+- tcp: LastAck should only change to Closed on ack of fin. (#477)
+- wire/dhcpv4: account for lease time, router and subnet options in DhcpRepr::buffer_len (#478)
 
 ## [0.7.1] - 2021-03-27
 
@@ -57,5 +83,9 @@ only processed when directed to the 255.255.255.255 address. ([377](https://gith
 - Simplify lifetime parameters of sockets, SocketSet, EthernetInterface ([410](https://github.com/smoltcp-rs/smoltcp/pull/410), [413](https://github.com/smoltcp-rs/smoltcp/pull/413))
 
 [Unreleased]: https://github.com/smoltcp-rs/smoltcp/compare/v0.7.0...HEAD
+[0.7.5]: https://github.com/smoltcp-rs/smoltcp/compare/v0.7.4...v0.7.5
+[0.7.4]: https://github.com/smoltcp-rs/smoltcp/compare/v0.7.3...v0.7.4
+[0.7.3]: https://github.com/smoltcp-rs/smoltcp/compare/v0.7.2...v0.7.3
+[0.7.2]: https://github.com/smoltcp-rs/smoltcp/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/smoltcp-rs/smoltcp/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/smoltcp-rs/smoltcp/compare/v0.6.0...v0.7.0

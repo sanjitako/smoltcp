@@ -1,14 +1,5 @@
 use core::ops::{Deref, DerefMut};
 
-#[cfg(feature = "socket-raw")]
-use crate::socket::RawSocket;
-#[cfg(all(feature = "socket-icmp", any(feature = "proto-ipv4", feature = "proto-ipv6")))]
-use crate::socket::IcmpSocket;
-#[cfg(feature = "socket-udp")]
-use crate::socket::UdpSocket;
-#[cfg(feature = "socket-tcp")]
-use crate::socket::TcpSocket;
-
 /// A trait for tracking a socket usage session.
 ///
 /// Allows implementation of custom drop logic that runs only if the socket was changed
@@ -20,13 +11,18 @@ pub trait Session {
 }
 
 #[cfg(feature = "socket-raw")]
-impl<'a> Session for RawSocket<'a> {}
-#[cfg(all(feature = "socket-icmp", any(feature = "proto-ipv4", feature = "proto-ipv6")))]
-impl<'a> Session for IcmpSocket<'a> {}
+impl<'a> Session for crate::socket::RawSocket<'a> {}
+#[cfg(all(
+    feature = "socket-icmp",
+    any(feature = "proto-ipv4", feature = "proto-ipv6")
+))]
+impl<'a> Session for crate::socket::IcmpSocket<'a> {}
 #[cfg(feature = "socket-udp")]
-impl<'a> Session for UdpSocket<'a> {}
+impl<'a> Session for crate::socket::UdpSocket<'a> {}
 #[cfg(feature = "socket-tcp")]
-impl<'a> Session for TcpSocket<'a> {}
+impl<'a> Session for crate::socket::TcpSocket<'a> {}
+#[cfg(feature = "socket-dhcpv4")]
+impl Session for crate::socket::Dhcpv4Socket {}
 
 /// A smart pointer to a socket.
 ///
@@ -47,7 +43,9 @@ impl<'a, T: Session + 'a> Ref<'a, T> {
     ///
     /// [into_inner]: #method.into_inner
     pub fn new(socket: &'a mut T) -> Self {
-        Ref { socket: Some(socket) }
+        Ref {
+            socket: Some(socket),
+        }
     }
 
     /// Unwrap a smart pointer to a socket.

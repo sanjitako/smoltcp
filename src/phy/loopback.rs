@@ -1,17 +1,12 @@
-#[cfg(feature = "std")]
-use std::vec::Vec;
-#[cfg(feature = "std")]
-use std::collections::VecDeque;
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
-#[cfg(all(feature = "alloc", not(feature = "rust-1_28")))]
+#[cfg(not(feature = "rust-1_28"))]
 use alloc::collections::VecDeque;
-#[cfg(all(feature = "alloc", feature = "rust-1_28"))]
+use alloc::vec::Vec;
+#[cfg(feature = "rust-1_28")]
 use alloc::VecDeque;
 
-use crate::Result;
 use crate::phy::{self, Device, DeviceCapabilities, Medium};
 use crate::time::Instant;
+use crate::Result;
 
 /// A loopback device.
 #[derive(Debug)]
@@ -49,7 +44,9 @@ impl<'a> Device<'a> for Loopback {
     fn receive(&'a mut self) -> Option<(Self::RxToken, Self::TxToken)> {
         self.queue.pop_front().map(move |buffer| {
             let rx = RxToken { buffer };
-            let tx = TxToken { queue: &mut self.queue };
+            let tx = TxToken {
+                queue: &mut self.queue,
+            };
             (rx, tx)
         })
     }
@@ -68,7 +65,8 @@ pub struct RxToken {
 
 impl phy::RxToken for RxToken {
     fn consume<R, F>(mut self, _timestamp: Instant, f: F) -> Result<R>
-        where F: FnOnce(&mut [u8]) -> Result<R>
+    where
+        F: FnOnce(&mut [u8]) -> Result<R>,
     {
         f(&mut self.buffer)
     }
@@ -81,7 +79,8 @@ pub struct TxToken<'a> {
 
 impl<'a> phy::TxToken for TxToken<'a> {
     fn consume<R, F>(self, _timestamp: Instant, len: usize, f: F) -> Result<R>
-        where F: FnOnce(&mut [u8]) -> Result<R>
+    where
+        F: FnOnce(&mut [u8]) -> Result<R>,
     {
         let mut buffer = Vec::new();
         buffer.resize(len, 0);
