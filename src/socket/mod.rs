@@ -185,7 +185,7 @@ from_socket!(Dhcpv4Socket, Dhcpv4);
 
 /// Data passed to sockets when processing.
 #[derive(Clone, Debug)]
-pub(crate) struct Context {
+pub struct Context {
     pub now: Instant,
     #[cfg(feature = "medium-ethernet")]
     pub ethernet_address: Option<crate::wire::EthernetAddress>,
